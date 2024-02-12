@@ -9,13 +9,6 @@
     if (argv[i] != NULL)\
         opt = argv[i];\
 
-#define PRINT_BUF_NL(buf, w, h) \
-        for (size_t i=0;i<w*h;i++) {\
-            wcout << buf[i];\
-            if ((i+1)%w==0)\
-                wcout << '\n';\
-        }\
-
 #define IMG_CHAR L"░▒▓"
 
 using namespace std;

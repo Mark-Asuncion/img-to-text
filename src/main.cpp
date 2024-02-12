@@ -31,7 +31,7 @@ int main(int argc,char **argv) {
     string size = "32x";
     double contrast = 50.0;
 
-    for (size_t i=1; i<argc; i++) {
+    for (int i=1; i<argc; i++) {
         string opt = argv[i];
         if (opt == "-input") {
             ASSIGN_OPT(path);
@@ -80,9 +80,11 @@ int main(int argc,char **argv) {
 
         wchar_t equ_char[4] = IMG_CHAR;
         auto shade = [equ_char](Quantum* p) {
-            Quantum shd = *p / (double)USHRT_MAX * 100.0;
+            Quantum shd = *p / (float)USHRT_MAX * 100.0;
             size_t ch_id = floor((double) shd / 33.0);
             size_t id = (ch_id == 0)? ch_id:ch_id-1;
+            if (id < 0) id = 0;
+            else if (id >= 3) id = 2;
             return equ_char[id];
         };
 

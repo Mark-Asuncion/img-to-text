@@ -1,18 +1,36 @@
 #include "Magick++.h"
-#include <cassert>
+#include "Magick++/Pixels.h"
+#include "MagickCore/magick-type.h"
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
-#include <climits>
 
 #define ASSIGN_OPT(opt) \
     i++; \
     if (argv[i] != NULL)\
-        opt = argv[i];\
+        opt = argv[i];
 
-#define IMG_CHAR L"░▒▓"
+#define CHECK_INVALID(err) \
+    if (argv[i+1][0] == '-') {\
+        wcout << err << '\n';\
+        help();\
+        std::exit(1);\
+    }
 
-using namespace std;
+#define IMG_CHAR L"░▒▓█"
+
+using std::string, std::wcout, std::endl, std::wstring;
 using namespace Magick;
+
+void help() {
+    wcout << "Usage:\n";
+    wcout << "imgtotext [options] [file]\n";
+    wcout << "help:\n";
+    wcout << "-h, --help\tprints this message\n";
+    wcout << "options:\n";
+    wcout << "-s, --size\tresize the image before converting to text\n";
+    wcout << "-c, --contrast\tapplies amount of contrast\n";
+}
 
 int main(int argc,char **argv) {
     // TODO
@@ -21,27 +39,40 @@ int main(int argc,char **argv) {
 
     InitializeMagick(*argv);
     string path;
-    string size = "32x";
+    string size = "";
     double contrast = 50.0;
 
     for (int i=1; i<argc; i++) {
         string opt = argv[i];
-        if (opt == "-input") {
+        if (opt == "--input" || opt == "-i") {
+            CHECK_INVALID("Invalid path name");
             ASSIGN_OPT(path);
         }
-        else if (opt == "-size") {
+        else if (opt == "-h" || opt == "--help") {
+            help();
+            std::exit(0);
+        }
+        else if (opt == "--size" || opt == "-s") {
+            CHECK_INVALID("Invalid Size argument");
             ASSIGN_OPT(size);
         }
-        else if (opt == "-contrast") {
+        else if (opt == "--contrast" || opt == "-c") {
+            CHECK_INVALID("Invalid contrast argument");
             string constr;
             ASSIGN_OPT(constr);
             char* s = &constr.back();
             contrast = strtod(&constr[0], &s);
         }
-        else
+        else {
+            if (argv[i][0] == '-') {
+                wcout << "Invalid path name\n";
+                help();
+                std::exit(1);
+            }
             path = argv[i];
+        }
     }
-    if (!filesystem::exists(path) || filesystem::is_directory(path)) {
+    if (!std::filesystem::exists(path) || std::filesystem::is_directory(path)) {
         wcout << "File does not exist or is a directory" << endl;
         return 1;
     }
@@ -55,26 +86,27 @@ int main(int argc,char **argv) {
         image.read( path );
 
         image.modifyImage();
-        image.resize(Geometry(size));
+        if (!size.empty())
+            image.resize(Geometry(size));
         Geometry geo = image.size();
         size_t w = geo.width();
         size_t h = geo.height();
 
-        // color filtering
-        image.channel(ChannelType::GrayChannel);
         image.sigmoidalContrast(1, contrast);
-        /* image.level(60.0, 109.0); */
+        // image.modifyImage();
+        Pixels view(image);
 
-        Quantum *pixel_cache = image.getPixels(0,0,w,h);
+        Quantum *pixel_cache = view.get(0,0,w,h);
         size_t i = 0;
         size_t buf_size = w*h+h;
         wchar_t* buf = (wchar_t*) malloc(( buf_size+1 ) * sizeof(wchar_t));
         buf[buf_size] = 0;
 
-        wchar_t equ_char[4] = IMG_CHAR;
-        auto shade = [equ_char](Quantum* p) {
-            Quantum shd = *p / (float)USHRT_MAX * 100.0;
-            size_t ch_id = floor((double) shd / 33.0);
+        wstring equ_char(IMG_CHAR);
+        auto shade = [&equ_char](Quantum* p) {
+            Quantum shd = *p / QuantumRange * 100.0;
+            size_t ch_id = floor((double) shd
+                         / ( 100.0 / (double)equ_char.length() ));
             size_t id = (ch_id == 0)? ch_id:ch_id-1;
             if (id < 0) id = 0;
             else if (id >= 3) id = 2;
@@ -82,18 +114,19 @@ int main(int argc,char **argv) {
         };
 
         wchar_t* pbuf = buf;
+
         while ( i<w*h ) {
             *pbuf = shade(pixel_cache);
             i++;
-            pixel_cache++;
+            pixel_cache+=3;
             pbuf++;
             if (i%w == 0) {
                 *pbuf = '\n';
                 pbuf++;
             }
         }
-        // image.syncPixels();
-        // image.write( "logo.png" );
+        // view.sync();
+        // image.write( "image.png" );
 
         wcout << buf << endl;
         // TODO copy to clipboard

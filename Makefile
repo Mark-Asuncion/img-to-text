@@ -1,10 +1,17 @@
 CC = g++
-CXXFLAGS = $(shell /opt/ImageMagick-7.1.1/bin/Magick++-config --cppflags)
-LDFLAGS = $(shell /opt/ImageMagick-7.1.1/bin/Magick++-config --ldflags)
-OPTFLAGS = -Wall -O3
+CCFLAGS = $(shell Magick++-config --cppflags --cxxflags --ldflags --libs)
+OPTFLAGS = -Wextra -Wall -Wpedantic -std=c++17
 
-SRC = ./src/main.cpp
-TARGET = ./build/imgtotext
+SOURCES = $(wildcard ./src/*.cpp)
+BUILDDIR = ./build
+TARGET = $(BUILDDIR)/toascii
+ASSET = ./assets/sample.bmp
 
-$(TARGET): $(SRC)
-	$(CC) $(CXXFLAGS) $(OPTFLAGS) -o $@ $^ $(LDFLAGS)
+$(TARGET): $(SOURCES)
+	$(CC) $(OPTFLAGS) -o $(TARGET) $(SOURCES) $(CCFLAGS)
+	@cp $(ASSET) $(BUILDDIR)
+
+.PHONY: compile_flags.txt
+
+compile_flags.txt:
+	@echo "$(OPTFLAGS) $(CCFLAGS)" | tr ' ' '\n' > compile_flags.txt

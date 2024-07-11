@@ -11,6 +11,9 @@ ASSET = ./assets/sample.bmp
 $(TARGET): $(SOURCES)
 	$(CC) $(OPTFLAGS) $(DEBUG) -o $(TARGET) $(SOURCES) $(CCFLAGS)
 
+release:
+	$(CC) $(OPTFLAGS) -o $(TARGET) $(SOURCES) $(CCFLAGS)
+
 .PHONY: compile_flags.txt
 
 compile_flags.txt:
